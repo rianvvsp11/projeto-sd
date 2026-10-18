@@ -1,3 +1,5 @@
+package q3;
+
 import java.io.*;
 
 public class Main {

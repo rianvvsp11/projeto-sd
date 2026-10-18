@@ -1,3 +1,5 @@
+package q3;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -72,7 +74,7 @@ public class No {
             try {
                 processar(Mensagem.parse(linha));
             } catch (IllegalArgumentException e) {
-                registrar("Mensagem ignorada: " + e.getMessage());
+                registrar("q3.Mensagem ignorada: " + e.getMessage());
             }
         } catch (IOException e) {
             registrar("Erro ao tratar conexão: " + e.getMessage());

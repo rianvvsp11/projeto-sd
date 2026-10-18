@@ -1,5 +1,7 @@
+package q3;
+
 /**
- * Mensagem trocada entre os nós (tipo composto), serializada em uma linha de texto:
+ * q3.Mensagem trocada entre os nós (tipo composto), serializada em uma linha de texto:
  *   BUSCA|origem|arquivo|saltos
  *   RESPOSTA|origem|arquivo|responsavel|saltos
  */
@@ -40,7 +42,7 @@ public class Mensagem {
                 : "RESPOSTA|" + origem + "|" + arquivo + "|" + responsavel + "|" + saltos;
     }
 
-    /** Converte a linha recebida em Mensagem; lança IllegalArgumentException se malformada. */
+    /** Converte a linha recebida em q3.Mensagem; lança IllegalArgumentException se malformada. */
     public static Mensagem parse(String linha) {
         try {
             String[] p = linha.split("\\|");
@@ -53,7 +55,7 @@ public class Mensagem {
                     throw new IllegalArgumentException("Tipo desconhecido: " + p[0]);
             }
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException("Mensagem malformada: " + linha, e);
+            throw new IllegalArgumentException("q3.Mensagem malformada: " + linha, e);
         }
     }
 }
