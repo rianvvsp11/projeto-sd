@@ -26,8 +26,8 @@ final class Protocolo {
         } // se bem sucedida a resposta, status é iniciado
     }
 
-//Escreve a resposta no fluxo, no formato do protocolo, e descarrega o buffer
-static void enviarResposta(PrintWriter out, Resposta r) {
+    //Escreve a resposta no fluxo, no formato do protocolo, e descarrega o buffer
+    static void enviarResposta(PrintWriter out, Resposta r) {
         out.print(r.status + "\n");
         if (r.cache != null) {
             out.print("Cache: " + r.cache + "\n");

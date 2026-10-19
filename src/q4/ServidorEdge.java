@@ -25,6 +25,9 @@ import java.util.Scanner;
  * Mensagens tratadas:
  *  - GET /arquivoN.ext        (do cliente)
  *  - INVALIDATE /arquivoN.ext (da origem)
+ *
+ * É o componente central da demonstração: os 3 casos de teste (HIT/MISS, TTL e
+ * invalidação) acontecem aqui.
  */
 public class ServidorEdge {
 
@@ -44,6 +47,7 @@ public class ServidorEdge {
      * removeEldestEntry descarta a menos recentemente usada ao exceder a capacidade.
      * Todo acesso a esta estrutura é feito dentro de blocos synchronized.
      */
+    // várias threads usam o cache ao mesmo tempo, por isso o synchronized em todo acesso
     private static final Map<String, EntradaCache> cache =
             new LinkedHashMap<String, EntradaCache>(16, 0.75f, true) {
                 @Override
@@ -61,6 +65,7 @@ public class ServidorEdge {
 
     public static void main(String[] args) throws IOException {
         Scanner sc = new Scanner(System.in);
+        // a porta e o TTL são digitados, assim dá para subir 3 Edges com configurações diferentes
         try {
             System.out.print("Porta do Edge (ex.: 8001): ");
             porta = Integer.parseInt(sc.nextLine().trim());
@@ -72,8 +77,9 @@ public class ServidorEdge {
                 System.out.println("O TTL deve ser maior que zero.");
                 return;
             }
-            ttlMs = ttlSegundos * 1000L;
+            ttlMs = ttlSegundos * 1000L; // guarda em milissegundos para comparar com a idade da entrada
         } catch (NumberFormatException e) {
+            // erro tratado: digitar letras em vez de número não derruba o programa com exceção
             System.out.println("Valor numérico inválido.");
             return;
         }
@@ -83,6 +89,7 @@ public class ServidorEdge {
         try {
             servidor = new ServerSocket(porta);
         } catch (IOException e) {
+            // erro tratado: porta já em uso (ex.: Edge duplicado)
             System.out.println("Não foi possível abrir a porta " + porta + ": " + e.getMessage());
             return;
         }
@@ -94,6 +101,7 @@ public class ServidorEdge {
                 + Config.TAMANHO_CACHE + " arquivos");
 
         // Uma thread por conexão recebida (clientes e origem).
+        // assim um cliente lento (ou um MISS de 300 ms) não bloqueia os outros
         while (true) {
             Socket conexao = servidor.accept();
             new Thread(() -> atender(conexao)).start();
@@ -111,6 +119,7 @@ public class ServidorEdge {
             log("Registro na origem: " + in.readLine());
             return true;
         } catch (IOException e) {
+            // erro tratado: origem desligada; avisa e encerra em vez de travar
             System.out.println("[Edge " + porta + "] Origem indisponível. Inicie o ServidorOrigem e tente novamente.");
             return false;
         }
@@ -128,6 +137,7 @@ public class ServidorEdge {
                 return;
             }
 
+            // o mesmo servidor atende o cliente (GET) e a origem (INVALIDATE)
             String[] p = linha.trim().split("\\s+");
             if (p[0].equals("GET") && p.length == 2) {
                 tratarGet(p[1], out);
@@ -165,17 +175,19 @@ public class ServidorEdge {
             // Cache miss: obtém o arquivo da origem e, se existir, o armazena.
             try {
                 Protocolo.Resposta daOrigem = buscarNaOrigem(nome);
-                if (daOrigem.ok()) {
+                if (daOrigem.ok()) { // só guarda sucesso, nunca erro (ex.: 404)
                     guardarNoCache(nome, daOrigem.conteudo);
                 }
                 resposta = new Protocolo.Resposta(daOrigem.status, "MISS", daOrigem.conteudo);
             } catch (IOException e) {
+                // erro tratado: origem fora do ar -> 502 Bad Gateway
                 log("Falha ao contatar a origem: " + e.getMessage());
                 resposta = new Protocolo.Resposta("502 Bad Gateway", "MISS", "");
             }
         }
 
         Protocolo.enviarResposta(out, resposta);
+        // o tempo no log do Edge mostra a diferença entre HIT (rápido) e MISS (~300 ms)
         double ms = (System.nanoTime() - inicio) / 1_000_000.0;
         log(String.format("GET /%s -> %s | Cache: %s | %.2f ms", nome, resposta.status, resposta.cache, ms));
     }
@@ -187,15 +199,16 @@ public class ServidorEdge {
      */
     private static String consultarCache(String nome) {
         synchronized (cache) {
-            EntradaCache entrada = cache.get(nome);
+            EntradaCache entrada = cache.get(nome); // o get também marca o arquivo como "usado agora" (LRU)
             if (entrada == null) {
                 return null;
             }
+            // TTL verificado no acesso: compara a idade da entrada com o limite
             long idadeMs = (System.nanoTime() - entrada.inseridoEmNs) / 1_000_000;
             if (idadeMs > ttlMs) {
                 cache.remove(nome);
                 log("TTL expirado para '" + nome + "' (" + idadeMs + " ms): removido do cache");
-                return null;
+                return null; // vira miss e busca a versão atualizada na origem
             }
             return entrada.conteudo;
         }
@@ -209,6 +222,7 @@ public class ServidorEdge {
     }
 
     /** Abre uma conexão TCP com a origem e solicita o arquivo. */
+    // aqui o Edge age como cliente TCP (passos 5 e 6 da Figura 1)
     private static Protocolo.Resposta buscarNaOrigem(String nome) throws IOException {
         try (Socket s = new Socket(Config.HOST, Config.PORTA_ORIGEM)) {
             s.setSoTimeout(5000);
@@ -221,6 +235,7 @@ public class ServidorEdge {
     }
 
     /** Remove o arquivo do cache, atendendo à invalidação enviada pela origem. */
+    // invalidação ativa (caso de teste 3): a próxima requisição vira MISS e traz a versão nova
     private static void tratarInvalidate(String caminho, PrintWriter out) {
         String nome = removerBarra(caminho);
         boolean removido;
@@ -229,7 +244,7 @@ public class ServidorEdge {
         }
         log("INVALIDATE recebido para '" + nome + "': "
                 + (removido ? "removido do cache" : "não estava em cache"));
-        out.println("OK invalidado");
+        out.println("OK invalidado"); // confirma para a origem
     }
 
     private static String removerBarra(String caminho) {
