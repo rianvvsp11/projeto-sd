@@ -10,15 +10,12 @@ public class Main {
         nos = new No[Config.NUM_NOS];
         for (int i = 0; i < Config.NUM_NOS; i++) {
             nos[i] = new No(i);
-            nos[i].iniciar();
+            nos[i].iniciar(); //inicialização dos nós p0-p5
         }
         pausa(300);
 
-        if (args.length > 0 && args[0].equalsIgnoreCase("teste")) {
-            executarTestes();
-        } else {
-            modoInterativo();
-        }
+        modoInterativo(); // run da interação geral
+
         for (No n : nos) n.parar();
         System.exit(0);
     }
@@ -27,9 +24,12 @@ public class Main {
     static boolean executarComando(String linha) {
         String[] partes = linha.trim().split("\\s+");
         if (partes.length != 2) return erro();
+        // nó de início vai ser de 0 a 5
         int origem = Validador.parseNo(partes[0]);
         if (origem < 0) return erro();
+        //valida o formato do arquivo e a faixa 1-60
         if (!Validador.arquivoValido(partes[1])) return erro();
+        //se enfim chegar a essa parte tudo está válido e é iniciado a busca
         nos[origem].iniciarBusca(partes[1]);
         return true;
     }
@@ -39,27 +39,15 @@ public class Main {
         return false;
     }
 
-    private static void executarTestes() {
-        Config.imprimir("\n===== CASO 1: busca válida (P0, arquivo35.ext) =====");
-        executarComando("P0 arquivo35.ext");
-        pausa(800);
-        Config.imprimir("\n===== CASO 2a: busca inválida (P1, arquivo99.ext) =====");
-        executarComando("P1 arquivo99.ext");
-        pausa(300);
-        Config.imprimir("\n===== CASO 2b: entrada inválida (P4, arquivoABC.ext) =====");
-        executarComando("P4 arquivoABC.ext");
-        pausa(300);
-        Config.imprimir("\nTestes concluídos.");
-    }
-
     private static void modoInterativo() throws IOException {
         Config.imprimir("\nDigite: <Px> <arquivoN.ext>  (ex.: P0 arquivo35.ext) | 'sair' para encerrar");
         BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in));
+        //leitura feita do devido comando de entrada ou o de sair para encerrar execução
         String linha;
         while ((linha = teclado.readLine()) != null) {
             if (linha.trim().equalsIgnoreCase("sair")) break;
             if (linha.trim().isEmpty()) continue;
-            executarComando(linha);
+            executarComando(linha); //aplicação do metodo com a string da entrada que inicia a busca
             pausa(300);
         }
     }

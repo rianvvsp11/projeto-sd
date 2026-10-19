@@ -11,9 +11,10 @@ public class Mensagem {
 
     public final Tipo tipo;
     public final int origem;        // nó que iniciou a busca
-    public final String arquivo;
+    public final String arquivo; //devido arquivo de entrada que será procurado
     public final int responsavel;   // nó que possui o arquivo (-1 em BUSCA)
-    public final int saltos;
+    public final int saltos; //nós percorridos que vão sendo incrementados a cada passo de busca
+                                //mera estilização somente
 
     private Mensagem(Tipo tipo, int origem, String arquivo, int responsavel, int saltos) {
         this.tipo = tipo;
@@ -25,11 +26,11 @@ public class Mensagem {
 
     public static Mensagem busca(int origem, String arquivo, int saltos) {
         return new Mensagem(Tipo.BUSCA, origem, arquivo, -1, saltos);
-    }
+    } //esqueleto da mensagem de busca
 
     public static Mensagem resposta(int origem, String arquivo, int responsavel, int saltos) {
         return new Mensagem(Tipo.RESPOSTA, origem, arquivo, responsavel, saltos);
-    }
+    } // na resposta terá o nó RESPONSAVEL que contém o arquivo na faixa
 
     /** Cópia da busca com um salto a mais (ao repassar ao sucessor). */
     public Mensagem comSaltoExtra() {
@@ -54,7 +55,7 @@ public class Mensagem {
                 default:
                     throw new IllegalArgumentException("Tipo desconhecido: " + p[0]);
             }
-        } catch (RuntimeException e) {
+        } catch (RuntimeException e) { //exceção tratada por quem recebe a mensagem, para erros
             throw new IllegalArgumentException("q3.Mensagem malformada: " + linha, e);
         }
     }
